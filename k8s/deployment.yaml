@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: bankingapp
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: bankingapp
+
+  template:
+    metadata:
+      labels:
+        app: bankingapp
+
+    spec:
+      containers:
+        - name: bankingapp
+          image: pankajacr12345.azurecr.io/bankingapp:v2
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_URLS
+              value: "http://+:8080"
