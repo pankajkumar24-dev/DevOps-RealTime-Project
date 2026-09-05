@@ -1,6 +1,5 @@
-# Docker
-# Build and push an image to Azure Container Registry
-# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+# CI/CD Pipeline
+# GitHub → Docker → ACR → AKS
 
 trigger:
 - main
@@ -9,31 +8,100 @@ resources:
 - repo: self
 
 variables:
-  # Container registry service connection established during pipeline creation
+
+  # Docker Registry Service Connection
   dockerRegistryServiceConnection: '8072af9b-e881-4d56-9d7e-3b46abcb6e8b'
+
+  # Azure Resource Manager Service Connection
+  azureServiceConnection: 'azure-service-connection'
+
+  # Azure details
+  resourceGroup: 'rg-devops-project'
+  aksCluster: 'aks-devops-project'
+
+  # ACR details
   imageRepository: 'pankajkumardevdevopsrealtimeproject'
   containerRegistry: 'pankajacr12345.azurecr.io'
+
+  # Dockerfile location
   dockerfilePath: '$(Build.SourcesDirectory)/BankingApp/Dockerfile'
+
+  # Image tag
   tag: '$(Build.BuildId)'
 
-  # Agent VM image name
+  # Agent
   vmImageName: 'ubuntu-latest'
 
+
 stages:
+
+# =========================
+# BUILD AND PUSH TO ACR
+# =========================
+
 - stage: Build
-  displayName: Build and push stage
+  displayName: Build and Push to ACR
+
   jobs:
+
   - job: Build
-    displayName: Build
+    displayName: Build Docker Image
+
     pool:
       vmImage: $(vmImageName)
+
     steps:
+
     - task: Docker@2
-      displayName: Build and push an image to container registry
+      displayName: Build and Push Docker Image
+
       inputs:
         command: buildAndPush
         repository: $(imageRepository)
         dockerfile: $(dockerfilePath)
         containerRegistry: $(dockerRegistryServiceConnection)
+
         tags: |
           $(tag)
+
+
+# =========================
+# DEPLOY TO AKS
+# =========================
+
+- stage: Deploy
+  displayName: Deploy to AKS
+
+  dependsOn: Build
+
+  jobs:
+
+  - job: Deploy
+    displayName: Deploy Banking Application
+
+    pool:
+      vmImage: $(vmImageName)
+
+    steps:
+
+    - task: KubernetesManifest@1
+      displayName: Deploy to AKS
+
+      inputs:
+
+        action: deploy
+
+        connectionType: azureResourceManager
+
+        azureSubscriptionConnection: $(azureServiceConnection)
+
+        azureResourceGroup: $(resourceGroup)
+
+        kubernetesCluster: $(aksCluster)
+
+        manifests: |
+          $(Build.SourcesDirectory)/k8s/deployment.yaml
+          $(Build.SourcesDirectory)/k8s/service.yaml
+
+        containers: |
+          $(containerRegistry)/$(imageRepository):$(tag)
