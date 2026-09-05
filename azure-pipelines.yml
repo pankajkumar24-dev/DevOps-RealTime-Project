@@ -111,6 +111,7 @@ stages:
               namespace: development
 
               manifests: |
+               $(Build.SourcesDirectory)/k8s/configmap-dev.yaml
                 $(Build.SourcesDirectory)/k8s/deployment.yaml
                 $(Build.SourcesDirectory)/k8s/service.yaml
 
@@ -164,6 +165,7 @@ stages:
               namespace: qa
 
               manifests: |
+                $(Build.SourcesDirectory)/k8s/configmap-qa.yaml
                 $(Build.SourcesDirectory)/k8s/deployment.yaml
                 $(Build.SourcesDirectory)/k8s/service.yaml
 
@@ -218,6 +220,7 @@ stages:
               namespace: production
 
               manifests: |
+                $(Build.SourcesDirectory)/k8s/configmap-production.yaml
                 $(Build.SourcesDirectory)/k8s/deployment.yaml
                 $(Build.SourcesDirectory)/k8s/service.yaml
 
