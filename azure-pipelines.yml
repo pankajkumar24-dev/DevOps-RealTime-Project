@@ -8,60 +8,40 @@ trigger:
 - main
 
 
-# ==========================================
-# VARIABLES
-# ==========================================
-
 variables:
 
-  # Docker Registry Service Connection
   dockerRegistryServiceConnection: '8072af9b-e881-4d56-9d7e-3b46abcb6e8b'
 
-  # Azure Resource Manager Service Connection
   azureServiceConnection: 'azure-service-connection'
 
-  # Azure Resource Group
   resourceGroup: 'rg-devops-project'
 
-  # AKS Cluster Name
   aksCluster: 'aks-devops-project'
 
-  # ACR Image Repository Name
   imageRepository: 'pankajkumardevdevopsrealtimeproject'
 
-  # Azure Container Registry
   containerRegistry: 'pankajacr12345.azurecr.io'
 
-  # Dockerfile Path
   dockerfilePath: '$(Build.SourcesDirectory)/BankingApp/Dockerfile'
 
-  # Docker Image Tag
   tag: '$(Build.BuildId)'
 
-  # Build Agent
   vmImageName: 'ubuntu-latest'
 
-
-# ==========================================
-# STAGES
-# ==========================================
 
 stages:
 
 
 # ==========================================
-# STAGE 1
-# BUILD AND PUSH IMAGE TO ACR
+# STAGE 1 - BUILD AND PUSH
 # ==========================================
 
 - stage: Build
-
   displayName: 'Build and Push to ACR'
 
   jobs:
 
   - job: BuildDockerImage
-
     displayName: 'Build Docker Image'
 
     pool:
@@ -69,39 +49,27 @@ stages:
 
     steps:
 
-    # Checkout Source Code
     - checkout: self
-
       displayName: 'Checkout Source Code'
 
-
-    # Build and Push Docker Image
     - task: Docker@2
-
       displayName: 'Build and Push Docker Image to ACR'
 
       inputs:
-
         command: buildAndPush
-
         repository: $(imageRepository)
-
         dockerfile: $(dockerfilePath)
-
         containerRegistry: $(dockerRegistryServiceConnection)
 
         tags: |
           $(tag)
 
 
-
 # ==========================================
-# STAGE 2
-# DEPLOY TO DEVELOPMENT
+# STAGE 2 - DEVELOPMENT
 # ==========================================
 
 - stage: Development
-
   displayName: 'Deploy to Development'
 
   dependsOn: Build
@@ -109,7 +77,6 @@ stages:
   jobs:
 
   - deployment: DeployToDevelopment
-
     displayName: 'Deploy to Development'
 
     environment: 'Development'
@@ -118,22 +85,14 @@ stages:
       vmImage: $(vmImageName)
 
     strategy:
-
       runOnce:
-
         deploy:
-
           steps:
 
-          # Checkout Repository
           - checkout: self
-
             displayName: 'Checkout Repository'
 
-
-          # Deploy to AKS
           - task: KubernetesManifest@1
-
             displayName: 'Deploy Application to Development'
 
             inputs:
@@ -148,6 +107,9 @@ stages:
 
               kubernetesCluster: $(aksCluster)
 
+              # 👇 DEVELOPMENT NAMESPACE
+              namespace: development
+
               manifests: |
                 $(Build.SourcesDirectory)/k8s/deployment.yaml
                 $(Build.SourcesDirectory)/k8s/service.yaml
@@ -156,14 +118,11 @@ stages:
                 $(containerRegistry)/$(imageRepository):$(tag)
 
 
-
 # ==========================================
-# STAGE 3
-# DEPLOY TO QA
+# STAGE 3 - QA
 # ==========================================
 
 - stage: QA
-
   displayName: 'Deploy to QA'
 
   dependsOn: Development
@@ -171,7 +130,6 @@ stages:
   jobs:
 
   - deployment: DeployToQA
-
     displayName: 'Deploy to QA'
 
     environment: 'QA'
@@ -180,22 +138,14 @@ stages:
       vmImage: $(vmImageName)
 
     strategy:
-
       runOnce:
-
         deploy:
-
           steps:
 
-          # Checkout Repository
           - checkout: self
-
             displayName: 'Checkout Repository'
 
-
-          # Deploy to AKS
           - task: KubernetesManifest@1
-
             displayName: 'Deploy Application to QA'
 
             inputs:
@@ -210,6 +160,9 @@ stages:
 
               kubernetesCluster: $(aksCluster)
 
+              # 👇 QA NAMESPACE
+              namespace: qa
+
               manifests: |
                 $(Build.SourcesDirectory)/k8s/deployment.yaml
                 $(Build.SourcesDirectory)/k8s/service.yaml
@@ -218,15 +171,11 @@ stages:
                 $(containerRegistry)/$(imageRepository):$(tag)
 
 
-
 # ==========================================
-# STAGE 4
-# DEPLOY TO PRODUCTION
-# APPROVAL REQUIRED
+# STAGE 4 - PRODUCTION
 # ==========================================
 
 - stage: Production
-
   displayName: 'Deploy to Production'
 
   dependsOn: QA
@@ -234,34 +183,23 @@ stages:
   jobs:
 
   - deployment: DeployToProduction
-
     displayName: 'Deploy to Production'
 
-
-    # Azure DevOps Environment
-    # Production Approval Check will work here
+    # Production Approval Check is attached here
     environment: 'Production'
 
     pool:
       vmImage: $(vmImageName)
 
     strategy:
-
       runOnce:
-
         deploy:
-
           steps:
 
-          # Checkout Repository
           - checkout: self
-
             displayName: 'Checkout Repository'
 
-
-          # Deploy to AKS
           - task: KubernetesManifest@1
-
             displayName: 'Deploy Application to Production'
 
             inputs:
@@ -275,6 +213,9 @@ stages:
               azureResourceGroup: $(resourceGroup)
 
               kubernetesCluster: $(aksCluster)
+
+              # 👇 PRODUCTION NAMESPACE
+              namespace: production
 
               manifests: |
                 $(Build.SourcesDirectory)/k8s/deployment.yaml
