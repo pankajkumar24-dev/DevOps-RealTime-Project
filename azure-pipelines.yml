@@ -76,32 +76,42 @@ stages:
 
   jobs:
 
-  - job: Deploy
+  # Deployment Job
+  - deployment: DeployToDevelopment
+
     displayName: Deploy Banking Application
+
+    # 👇 Azure DevOps Environment
+    environment: Development
 
     pool:
       vmImage: $(vmImageName)
 
-    steps:
+    strategy:
+      runOnce:
 
-    - task: KubernetesManifest@1
-      displayName: Deploy to AKS
+        deploy:
 
-      inputs:
+          steps:
 
-        action: deploy
+          - task: KubernetesManifest@1
+            displayName: Deploy to AKS
 
-        connectionType: azureResourceManager
+            inputs:
 
-        azureSubscriptionConnection: $(azureServiceConnection)
+              action: deploy
 
-        azureResourceGroup: $(resourceGroup)
+              connectionType: azureResourceManager
 
-        kubernetesCluster: $(aksCluster)
+              azureSubscriptionConnection: $(azureServiceConnection)
 
-        manifests: |
-          $(Build.SourcesDirectory)/k8s/deployment.yaml
-          $(Build.SourcesDirectory)/k8s/service.yaml
+              azureResourceGroup: $(resourceGroup)
 
-        containers: |
-          $(containerRegistry)/$(imageRepository):$(tag)
+              kubernetesCluster: $(aksCluster)
+
+              manifests: |
+                $(Build.SourcesDirectory)/k8s/deployment.yaml
+                $(Build.SourcesDirectory)/k8s/service.yaml
+
+              containers: |
+                $(containerRegistry)/$(imageRepository):$(tag)
