@@ -25,3 +25,7 @@ spec:
           env:
             - name: ASPNETCORE_URLS
               value: "http://+:8080"
+              # Load variables from ConfigMap
+          envFrom:
+            - configMapRef:
+                name: bankingapp-config

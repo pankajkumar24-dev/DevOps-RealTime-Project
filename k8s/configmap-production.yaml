@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: bankingapp-config
+  namespace: production
+
+data:
+  ENVIRONMENT: "Production"
+  APP_MESSAGE: "Welcome to BankingApp Production Environment"

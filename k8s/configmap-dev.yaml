@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: bankingapp-config
+  namespace: development
+
+data:
+  ENVIRONMENT: "Development"
+  APP_MESSAGE: "Welcome to BankingApp Development Environment"
