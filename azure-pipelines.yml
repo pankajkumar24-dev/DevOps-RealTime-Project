@@ -1,7 +1,7 @@
 # ==========================================
 # CI/CD Pipeline
 # GitHub → Docker → ACR → AKS
-# With Azure DevOps Environment
+# Development → QA → Production
 # ==========================================
 
 trigger:
@@ -20,30 +20,23 @@ variables:
   # Azure Resource Manager Service Connection
   azureServiceConnection: 'azure-service-connection'
 
-
   # Azure Resource Group
   resourceGroup: 'rg-devops-project'
-
 
   # AKS Cluster Name
   aksCluster: 'aks-devops-project'
 
-
   # ACR Image Repository Name
   imageRepository: 'pankajkumardevdevopsrealtimeproject'
-
 
   # Azure Container Registry
   containerRegistry: 'pankajacr12345.azurecr.io'
 
-
   # Dockerfile Path
   dockerfilePath: '$(Build.SourcesDirectory)/BankingApp/Dockerfile'
 
-
   # Docker Image Tag
   tag: '$(Build.BuildId)'
-
 
   # Build Agent
   vmImageName: 'ubuntu-latest'
@@ -67,36 +60,22 @@ stages:
 
   jobs:
 
-
-  # ------------------------------------------
-  # JOB: BUILD DOCKER IMAGE
-  # ------------------------------------------
-
   - job: BuildDockerImage
 
     displayName: 'Build Docker Image'
 
     pool:
-
       vmImage: $(vmImageName)
-
 
     steps:
 
-
-    # ------------------------------------------
-    # Checkout GitHub Repository
-    # ------------------------------------------
-
+    # Checkout Source Code
     - checkout: self
 
       displayName: 'Checkout Source Code'
 
 
-    # ------------------------------------------
     # Build and Push Docker Image
-    # ------------------------------------------
-
     - task: Docker@2
 
       displayName: 'Build and Push Docker Image to ACR'
@@ -112,130 +91,194 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
 
         tags: |
-
           $(tag)
+
 
 
 # ==========================================
 # STAGE 2
-# DEPLOY APPLICATION TO AKS
+# DEPLOY TO DEVELOPMENT
 # ==========================================
 
-- stage: Deploy
+- stage: Development
 
-  displayName: 'Deploy to AKS'
+  displayName: 'Deploy to Development'
 
   dependsOn: Build
 
-
   jobs:
-
-
-  # ==========================================
-  # DEPLOYMENT JOB
-  # ==========================================
 
   - deployment: DeployToDevelopment
 
-    displayName: 'Deploy Banking Application'
-
-
-    # ------------------------------------------
-    # AZURE DEVOPS ENVIRONMENT
-    # ------------------------------------------
+    displayName: 'Deploy to Development'
 
     environment: 'Development'
 
-
-    # ------------------------------------------
-    # AGENT
-    # ------------------------------------------
-
     pool:
-
       vmImage: $(vmImageName)
-
-
-    # ------------------------------------------
-    # DEPLOYMENT STRATEGY
-    # ------------------------------------------
 
     strategy:
 
       runOnce:
 
-
         deploy:
-
 
           steps:
 
-
-          # ====================================
-          # IMPORTANT
-          # CHECKOUT REPOSITORY
-          # ====================================
-
+          # Checkout Repository
           - checkout: self
 
             displayName: 'Checkout Repository'
 
 
-          # ====================================
-          # DEBUG - CHECK FILES
-          # ====================================
-
-          - script: |
-
-              echo "Current Directory:"
-              pwd
-
-              echo "=========================="
-
-              echo "Repository Files:"
-              ls -R $(Build.SourcesDirectory)
-
-            displayName: 'Check Repository Files'
-
-
-          # ====================================
-          # DEPLOY TO AKS
-          # ====================================
-
+          # Deploy to AKS
           - task: KubernetesManifest@1
 
-            displayName: 'Deploy to AKS'
+            displayName: 'Deploy Application to Development'
 
             inputs:
 
               action: deploy
 
-
-              # Azure Connection Type
               connectionType: azureResourceManager
 
-
-              # Azure Service Connection
               azureSubscriptionConnection: $(azureServiceConnection)
 
-
-              # Resource Group
               azureResourceGroup: $(resourceGroup)
 
-
-              # AKS Cluster
               kubernetesCluster: $(aksCluster)
 
-
-              # Kubernetes YAML Files
               manifests: |
-
                 $(Build.SourcesDirectory)/k8s/deployment.yaml
-
                 $(Build.SourcesDirectory)/k8s/service.yaml
 
-
-              # Replace Image in deployment.yaml
               containers: |
+                $(containerRegistry)/$(imageRepository):$(tag)
 
+
+
+# ==========================================
+# STAGE 3
+# DEPLOY TO QA
+# ==========================================
+
+- stage: QA
+
+  displayName: 'Deploy to QA'
+
+  dependsOn: Development
+
+  jobs:
+
+  - deployment: DeployToQA
+
+    displayName: 'Deploy to QA'
+
+    environment: 'QA'
+
+    pool:
+      vmImage: $(vmImageName)
+
+    strategy:
+
+      runOnce:
+
+        deploy:
+
+          steps:
+
+          # Checkout Repository
+          - checkout: self
+
+            displayName: 'Checkout Repository'
+
+
+          # Deploy to AKS
+          - task: KubernetesManifest@1
+
+            displayName: 'Deploy Application to QA'
+
+            inputs:
+
+              action: deploy
+
+              connectionType: azureResourceManager
+
+              azureSubscriptionConnection: $(azureServiceConnection)
+
+              azureResourceGroup: $(resourceGroup)
+
+              kubernetesCluster: $(aksCluster)
+
+              manifests: |
+                $(Build.SourcesDirectory)/k8s/deployment.yaml
+                $(Build.SourcesDirectory)/k8s/service.yaml
+
+              containers: |
+                $(containerRegistry)/$(imageRepository):$(tag)
+
+
+
+# ==========================================
+# STAGE 4
+# DEPLOY TO PRODUCTION
+# APPROVAL REQUIRED
+# ==========================================
+
+- stage: Production
+
+  displayName: 'Deploy to Production'
+
+  dependsOn: QA
+
+  jobs:
+
+  - deployment: DeployToProduction
+
+    displayName: 'Deploy to Production'
+
+
+    # Azure DevOps Environment
+    # Production Approval Check will work here
+    environment: 'Production'
+
+    pool:
+      vmImage: $(vmImageName)
+
+    strategy:
+
+      runOnce:
+
+        deploy:
+
+          steps:
+
+          # Checkout Repository
+          - checkout: self
+
+            displayName: 'Checkout Repository'
+
+
+          # Deploy to AKS
+          - task: KubernetesManifest@1
+
+            displayName: 'Deploy Application to Production'
+
+            inputs:
+
+              action: deploy
+
+              connectionType: azureResourceManager
+
+              azureSubscriptionConnection: $(azureServiceConnection)
+
+              azureResourceGroup: $(resourceGroup)
+
+              kubernetesCluster: $(aksCluster)
+
+              manifests: |
+                $(Build.SourcesDirectory)/k8s/deployment.yaml
+                $(Build.SourcesDirectory)/k8s/service.yaml
+
+              containers: |
                 $(containerRegistry)/$(imageRepository):$(tag)
