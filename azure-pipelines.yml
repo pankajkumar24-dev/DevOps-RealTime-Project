@@ -111,7 +111,7 @@ stages:
               namespace: development
 
               manifests: |
-               $(Build.SourcesDirectory)/k8s/configmap-dev.yaml
+                $(Build.SourcesDirectory)/k8s/configmap-dev.yaml
                 $(Build.SourcesDirectory)/k8s/deployment.yaml
                 $(Build.SourcesDirectory)/k8s/service.yaml
 
