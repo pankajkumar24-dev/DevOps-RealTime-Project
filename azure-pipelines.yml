@@ -10,7 +10,7 @@ trigger:
 
 variables:
 
-  dockerRegistryServiceConnection: '8072af9b-e881-4d56-9d7e-3b46abcb6e8b'
+  dockerRegistryServiceConnection:  'pankajacr12345'
 
   azureServiceConnection: 'azure-service-connection'
 
